@@ -615,4 +615,73 @@ public class QueryDslBasicTest {
     private BooleanExpression allEq(String usernameCond, Integer ageCond) {
         return usernameCond == null ? ageEq(ageCond) : usernameEq(usernameCond).and(ageEq(ageCond));
     }
+
+    @Test
+    public void bulkUpdate() {
+        long count =
+                jpaQueryFactory
+                        .update(member)
+                        .set(member.username, "비회원")
+                        .where(member.age.lt(28))
+                        .execute();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Member> result =
+                jpaQueryFactory
+                        .selectFrom(member)
+                        .fetch();
+
+        result.forEach(member -> System.out.println("member.getUsername = " + member.getUsername()));
+
+        assertThat(count).isEqualTo(2);
+    }
+
+    @Test
+    public void bulkAdd() {
+        long count =
+                jpaQueryFactory
+                        .update(member)
+                        .set(member.age, member.age.multiply(2))
+                        .execute();
+    }
+
+    @Test
+    public void bulkDelete() {
+        long count =
+                jpaQueryFactory
+                        .delete(member)
+                        .where(member.age.gt(18))
+                        .execute();
+    }
+
+    @Test
+    public void sqlFunction() {
+        List<String> result =
+                jpaQueryFactory
+                        .select(
+                                Expressions.stringTemplate(
+                                        "function('replace', {0}, {1}, {2})",
+                                        member.username, "member", "M"))
+                        .from(member)
+                        .fetch();
+
+        result.forEach(s -> System.out.println("s = " + s));
+    }
+
+    @Test
+    public void sqlFunction2() {
+        List<String> result =
+                jpaQueryFactory
+                        .select(member.username)
+                        .from(member)
+//                        .where(member.username.eq(
+//                                Expressions.stringTemplate(
+//                                        "function('lower', {0})", member.username)))
+                        .where(member.username.eq(member.username.lower()))
+                        .fetch();
+
+        result.forEach(s -> System.out.println("s = " + s));
+    }
 }
