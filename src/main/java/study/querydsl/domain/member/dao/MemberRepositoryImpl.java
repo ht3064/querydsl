@@ -3,6 +3,9 @@ package study.querydsl.domain.member.dao;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import study.querydsl.domain.member.dto.request.MemberSearchCondition;
 import study.querydsl.domain.member.dto.response.MemberTeamDto;
 import study.querydsl.domain.member.dto.response.QMemberTeamDto;
@@ -36,6 +39,43 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                         ageGoe(condition.ageGoe()),
                         ageLoe(condition.ageLoe()))
                 .fetch();
+    }
+
+    @Override
+    public Page<MemberTeamDto> searchPage(MemberSearchCondition condition, Pageable pageable) {
+        List<MemberTeamDto> results =
+                queryFactory
+                        .select(
+                                new QMemberTeamDto(
+                                        member.id,
+                                        member.username,
+                                        member.age,
+                                        team.id,
+                                        team.name))
+                        .from(member)
+                        .leftJoin(member.team, team)
+                        .where(
+                                usernameEq(condition.username()),
+                                teamNameEq(condition.teamName()),
+                                ageGoe(condition.ageGoe()),
+                                ageLoe(condition.ageLoe()))
+                        .offset(pageable.getOffset())
+                        .limit(pageable.getPageSize())
+                        .fetch();
+
+        Long total =
+                queryFactory
+                        .select(member.count())
+                        .from(member)
+                        .leftJoin(member.team, team)
+                        .where(
+                                usernameEq(condition.username()),
+                                teamNameEq(condition.teamName()),
+                                ageGoe(condition.ageGoe()),
+                                ageLoe(condition.ageLoe()))
+                        .fetchOne();
+
+        return new PageImpl<>(results, pageable, total);
     }
 
     private BooleanExpression usernameEq(String username) {
