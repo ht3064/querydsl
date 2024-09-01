@@ -4,6 +4,8 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.domain.member.domain.Member;
 import study.querydsl.domain.member.dto.request.MemberSearchCondition;
@@ -68,5 +70,36 @@ class MemberRepositoryTest {
         assertThat(result)
                 .extracting("username")
                 .containsExactly("member4");
+    }
+
+    @Test
+    public void searchPage() {
+        Team teamA = createTeam("teamA");
+        Team teamB = createTeam("teamB");
+        entityManager.persist(teamA);
+        entityManager.persist(teamB);
+
+        Member member1 = Member.createMember("member1", 10, teamA);
+        Member member2 = Member.createMember("member2", 20, teamA);
+
+        Member member3 = Member.createMember("member3", 30, teamB);
+        Member member4 = Member.createMember("member4", 40, teamB);
+
+        entityManager.persist(member1);
+        entityManager.persist(member2);
+        entityManager.persist(member3);
+        entityManager.persist(member4);
+
+        MemberSearchCondition condition =
+                MemberSearchCondition.of(null, null, null, null);
+
+        PageRequest pageRequest = PageRequest.of(0, 3);
+
+        Page<MemberTeamDto> result = memberRepository.searchPage(condition, pageRequest);
+
+        assertThat(result.getSize()).isEqualTo(3);
+        assertThat(result.getContent())
+                .extracting("username")
+                .containsExactly("member1", "member2", "member3");
     }
 }
