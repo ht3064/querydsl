@@ -6,10 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.domain.member.domain.Member;
 import study.querydsl.domain.member.dto.request.MemberSearchCondition;
 import study.querydsl.domain.member.dto.response.MemberTeamDto;
+import study.querydsl.domain.member.dto.response.MemberTeamDtoV2;
 import study.querydsl.domain.team.domain.Team;
 
 import java.util.List;
@@ -101,5 +103,47 @@ class MemberRepositoryTest {
         assertThat(result.getContent())
                 .extracting("username")
                 .containsExactly("member1", "member2", "member3");
+    }
+
+    @Test
+    public void searchSlice() {
+        Team teamA = createTeam("teamA");
+        Team teamB = createTeam("teamB");
+        entityManager.persist(teamA);
+        entityManager.persist(teamB);
+
+        Member member1 = Member.createMember("member1", 10, teamA);
+        Member member2 = Member.createMember("member2", 20, teamA);
+
+        Member member3 = Member.createMember("member3", 30, teamB);
+        Member member4 = Member.createMember("member4", 40, teamB);
+
+        entityManager.persist(member1);
+        entityManager.persist(member2);
+        entityManager.persist(member3);
+        entityManager.persist(member4);
+
+        MemberSearchCondition condition =
+                MemberSearchCondition.of(null, null, null, null);
+
+        Slice<MemberTeamDtoV2> result =
+                memberRepository.searchSlice(condition, null, 2);
+
+        assertThat(result.getSize()).isEqualTo(2);
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.isLast()).isFalse();
+        assertThat(result)
+                .extracting("memberId")
+                .containsExactly(4L, 3L);
+
+        Slice<MemberTeamDtoV2> lastResult =
+                memberRepository.searchSlice(condition, 3L, 2);
+
+        assertThat(lastResult.getSize()).isEqualTo(2);
+        assertThat(lastResult.hasNext()).isFalse();
+        assertThat(lastResult.isLast()).isTrue();
+        assertThat(lastResult)
+                .extracting("memberId")
+                .containsExactly(2L, 1L);
     }
 }
