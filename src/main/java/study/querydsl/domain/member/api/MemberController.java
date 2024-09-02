@@ -3,11 +3,13 @@ package study.querydsl.domain.member.api;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import study.querydsl.domain.member.application.MemberService;
 import study.querydsl.domain.member.dto.request.MemberSearchCondition;
 import study.querydsl.domain.member.dto.response.MemberTeamDto;
+import study.querydsl.domain.member.dto.response.MemberTeamDtoV2;
 
 import java.util.List;
 
@@ -31,5 +33,11 @@ public class MemberController {
     @GetMapping("/v3/members")
     public Page<MemberTeamDto> memberSearchV3(MemberSearchCondition condition, Pageable pageable) {
         return memberService.searchMemberV3(condition, pageable);
+    }
+
+    @GetMapping("/v4/members")
+    public Slice<MemberTeamDtoV2> memberSearchV4(
+            MemberSearchCondition condition, Long lastMemberId, int pageSize) {
+        return memberService.searchMemberV4(condition, lastMemberId, pageSize);
     }
 }

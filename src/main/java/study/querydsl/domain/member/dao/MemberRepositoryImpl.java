@@ -1,14 +1,15 @@
 package study.querydsl.domain.member.dao;
 
+import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.support.PageableExecutionUtils;
 import study.querydsl.domain.member.dto.request.MemberSearchCondition;
 import study.querydsl.domain.member.dto.response.MemberTeamDto;
+import study.querydsl.domain.member.dto.response.MemberTeamDtoV2;
 import study.querydsl.domain.member.dto.response.QMemberTeamDto;
 
 import java.util.List;
@@ -76,6 +77,53 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                                 ageLoe(condition.ageLoe()));
 
         return PageableExecutionUtils.getPage(results, pageable, countQuery::fetchOne);
+    }
+
+    @Override
+    public Slice<MemberTeamDtoV2> searchSlice(
+            MemberSearchCondition condition, Long lastMemberId, int pageSize) {
+        List<MemberTeamDtoV2> results =
+                queryFactory
+                        .select(Projections.constructor(
+                                MemberTeamDtoV2.class,
+                                member.id,
+                                member.username,
+                                member.age,
+                                team.id,
+                                team.name))
+                        .from(member)
+                        .leftJoin(member.team, team)
+                        .where(
+                                lastMemberId(lastMemberId),
+                                usernameEq(condition.username()),
+                                teamNameEq(condition.teamName()),
+                                ageGoe(condition.ageGoe()),
+                                ageLoe(condition.ageLoe()))
+                        .orderBy(member.updatedAt.desc())
+                        .limit((long) pageSize + 1)
+                        .fetch();
+
+        return checkLastPage(results, pageSize);
+    }
+
+    private BooleanExpression lastMemberId(Long lastMemberId) {
+        if (lastMemberId == null) {
+            return null;
+        }
+        return member.id.lt(lastMemberId);
+    }
+
+    private Slice<MemberTeamDtoV2> checkLastPage(List<MemberTeamDtoV2> results, int pageSize) {
+        boolean hasNext = false;
+
+        if (results.size() > pageSize) {
+            hasNext = true;
+            results.remove(pageSize);
+        }
+
+        PageRequest pageRequest = PageRequest.ofSize(pageSize);
+
+        return new SliceImpl<>(results, pageRequest, hasNext);
     }
 
     private BooleanExpression usernameEq(String username) {
